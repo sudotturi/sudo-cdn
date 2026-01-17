@@ -366,6 +366,9 @@ app.post('/api/upload', validateApiKey, (req, res, next) => {
     const image = sharp(newPath);
     const metadata = await image.metadata();
 
+    // Get isPublic from form data (default to false if not provided)
+    const isPublic = req.body.isPublic === 'true' || req.body.isPublic === true;
+
     // Save to metadata
     const metadataStore = await loadMetadata();
     metadataStore.images[imageId] = {
@@ -377,7 +380,8 @@ app.post('/api/upload', validateApiKey, (req, res, next) => {
       height: metadata.height,
       format: metadata.format,
       uploadedAt: new Date().toISOString(),
-      extension: originalExt
+      extension: originalExt,
+      isPublic: isPublic
     };
     await saveMetadata(metadataStore);
 
@@ -420,6 +424,16 @@ app.get('/images/:id/:width/:height', async (req, res) => {
   return serveImage(req, res, width, height);
 });
 
+// Helper to get token from query parameter (for img tags that can't send headers)
+function getTokenFromRequest(req) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  const queryToken = req.query.token;
+  const apiKey = req.headers['x-api-key'] || req.query.apiKey;
+  
+  return { token: token || queryToken, apiKey };
+}
+
 async function serveImage(req, res, width, height) {
   try {
     const imageId = req.params.id;
@@ -430,6 +444,25 @@ async function serveImage(req, res, width, height) {
     }
 
     const imageMeta = metadataStore.images[imageId];
+    
+    // Check if image is private - require authentication
+    // If isPublic is undefined (legacy images), treat as private
+    if (imageMeta.isPublic !== true) {
+      // Check if user is authenticated - support both header and query parameter
+      const { token: tokenFromReq, apiKey } = getTokenFromRequest(req);
+      
+      if (tokenFromReq) {
+        const { verifyToken } = require('./utils');
+        const decoded = verifyToken(tokenFromReq);
+        if (!decoded) {
+          return res.status(401).json({ error: 'Invalid authentication token' });
+        }
+      } else if (apiKey && apiKey === config.apiKey) {
+        // Legacy API key support
+      } else {
+        return res.status(403).json({ error: 'This image is private. Authentication required.' });
+      }
+    }
     const originalPath = path.join(config.originalsPath, `${imageId}${imageMeta.extension}`);
 
     // Check if original file exists
@@ -483,11 +516,21 @@ async function serveImage(req, res, width, height) {
 app.get('/api/images', validateApiKey, async (req, res) => {
   try {
     const metadataStore = await loadMetadata();
-    const images = Object.values(metadataStore.images).map(img => ({
+    let images = Object.values(metadataStore.images).map(img => ({
       ...img,
       url: `/images/${img.id}`,
-      thumbnail: `/images/${img.id}/200/200`
+      thumbnail: `/images/${img.id}/200/200`,
+      // Ensure isPublic is boolean (default false for legacy images)
+      isPublic: img.isPublic === true
     }));
+
+    // Filter by public/private if filter query parameter is provided
+    const filter = req.query.filter;
+    if (filter === 'public') {
+      images = images.filter(img => img.isPublic === true);
+    } else if (filter === 'private') {
+      images = images.filter(img => img.isPublic === false);
+    }
 
     res.json({
       count: images.length,

@@ -4,11 +4,13 @@ const API_BASE = window.location.origin;
 // State management
 let authToken = localStorage.getItem('authToken');
 let currentUser = null;
+let currentFilter = 'all'; // 'all', 'public', 'private'
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {
     checkAuth();
     setupEventListeners();
+    initOTPInputs();
 });
 
 // Setup event listeners
@@ -95,6 +97,39 @@ async function handleLogin(e) {
     }
 }
 
+// Initialize OTP inputs
+function initOTPInputs() {
+    const inputs = document.querySelectorAll('.otp-input');
+    
+    inputs.forEach((input, index) => {
+        input.addEventListener('input', (e) => {
+            const value = e.target.value.replace(/[^0-9]/g, '');
+            e.target.value = value;
+            
+            if (value && index < inputs.length - 1) {
+                inputs[index + 1].focus();
+            }
+        });
+        
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Backspace' && !e.target.value && index > 0) {
+                inputs[index - 1].focus();
+            }
+        });
+        
+        input.addEventListener('paste', (e) => {
+            e.preventDefault();
+            const pastedData = (e.clipboardData || window.clipboardData).getData('text').replace(/[^0-9]/g, '');
+            if (pastedData.length === 6) {
+                inputs.forEach((inp, i) => {
+                    inp.value = pastedData[i] || '';
+                });
+                inputs[5].focus();
+            }
+        });
+    });
+}
+
 // Handle TOTP verification
 async function handleTotpVerify(e) {
     e.preventDefault();
@@ -102,12 +137,17 @@ async function handleTotpVerify(e) {
     errorDiv.classList.remove('show');
     errorDiv.textContent = '';
 
-    const totpCode = document.getElementById('totpCode').value;
+    // Collect OTP from individual inputs
+    const inputs = document.querySelectorAll('.otp-input');
+    const totpCode = Array.from(inputs).map(inp => inp.value).join('');
     const tempSessionId = document.getElementById('tempSessionId').value;
 
     if (!totpCode || totpCode.length !== 6) {
         errorDiv.textContent = 'Please enter a valid 6-digit code';
         errorDiv.classList.add('show');
+        // Focus first empty input
+        const firstEmpty = Array.from(inputs).find(inp => !inp.value);
+        if (firstEmpty) firstEmpty.focus();
         return;
     }
 
@@ -154,8 +194,11 @@ async function handleUpload(e) {
         return;
     }
 
+    const isPublic = document.getElementById('isPublic').checked;
+    
     const formData = new FormData();
     formData.append('image', file);
+    formData.append('isPublic', isPublic.toString());
 
     try {
         const response = await fetch(`${API_BASE}/api/upload`, {
@@ -184,12 +227,13 @@ async function handleUpload(e) {
 }
 
 // Load images list
-async function loadImages() {
+async function loadImages(filter = 'all') {
     const imagesList = document.getElementById('imagesList');
-    imagesList.innerHTML = '<p>Loading images...</p>';
+    imagesList.innerHTML = '<div class="loading">Loading images...</div>';
 
     try {
-        const response = await fetch(`${API_BASE}/api/images`, {
+        const url = filter !== 'all' ? `${API_BASE}/api/images?filter=${filter}` : `${API_BASE}/api/images`;
+        const response = await fetch(url, {
             headers: {
                 'Authorization': `Bearer ${authToken}`
             }
@@ -198,23 +242,50 @@ async function loadImages() {
         const data = await response.json();
 
         if (response.ok) {
-            if (data.images && data.images.length > 0) {
-                imagesList.innerHTML = data.images.map(img => `
+            const images = data.images || [];
+            
+            // Client-side filtering as fallback
+            let filteredImages = images;
+            if (filter === 'public') {
+                filteredImages = images.filter(img => img.isPublic === true);
+            } else if (filter === 'private') {
+                filteredImages = images.filter(img => img.isPublic === false);
+            }
+            
+            if (filteredImages.length > 0) {
+                imagesList.innerHTML = filteredImages.map(img => {
+                    // For private images, add auth token to URL; public images don't need it
+                    const thumbnailUrl = img.isPublic 
+                        ? `${API_BASE}${img.thumbnail}`
+                        : `${API_BASE}${img.thumbnail}?token=${authToken}`;
+                    const viewUrl = img.isPublic 
+                        ? `${API_BASE}${img.url}`
+                        : `${API_BASE}${img.url}?token=${authToken}`;
+                    
+                    return `
                     <div class="image-item">
-                        <img src="${API_BASE}${img.thumbnail}" alt="${img.originalName}" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22%3E%3C/svg%3E'">
+                        <img src="${thumbnailUrl}" alt="${img.originalName}" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22%3E%3C/svg%3E'">
                         <div class="image-item-info">
-                            <h3>${img.originalName}</h3>
-                            <div class="image-url">ID: ${img.id}</div>
-                            <div class="image-url">${img.width}x${img.height} - ${(img.size / 1024).toFixed(2)} KB</div>
+                            <div class="image-item-header">
+                                <span class="image-item-title">${img.originalName}</span>
+                                <span class="image-badge badge-${img.isPublic ? 'public' : 'private'}">
+                                    ${img.isPublic ? 'Public' : 'Private'}
+                                </span>
+                            </div>
+                            <div class="image-item-meta">
+                                ${img.width}x${img.height} • ${(img.size / 1024).toFixed(2)} KB
+                            </div>
                             <div class="image-item-actions">
-                                <a href="${API_BASE}${img.url}" target="_blank" class="btn btn-primary">View</a>
-                                <button onclick="deleteImage('${img.id}')" class="btn btn-danger">Delete</button>
+                                <a href="${viewUrl}" target="_blank" class="btn btn-primary btn-sm">View</a>
+                                <button onclick="copyImageLink('${API_BASE}${img.url}', ${img.isPublic})" class="btn btn-secondary btn-sm">Copy Link</button>
+                                <button onclick="deleteImage('${img.id}')" class="btn btn-danger btn-sm">Delete</button>
                             </div>
                         </div>
                     </div>
-                `).join('');
+                `;
+                }).join('');
             } else {
-                imagesList.innerHTML = '<div class="empty-state">No images uploaded yet.</div>';
+                imagesList.innerHTML = `<div class="empty-state">No ${filter === 'all' ? '' : filter} images found.</div>`;
             }
         } else {
             imagesList.innerHTML = '<div class="empty-state">Failed to load images.</div>';
@@ -222,6 +293,62 @@ async function loadImages() {
     } catch (error) {
         imagesList.innerHTML = '<div class="empty-state">Error loading images.</div>';
     }
+}
+
+// Filter images
+function filterImages(filter) {
+    currentFilter = filter;
+    
+    // Update active tab
+    document.querySelectorAll('.filter-tab').forEach(tab => {
+        tab.classList.remove('active');
+        if (tab.dataset.filter === filter) {
+            tab.classList.add('active');
+        }
+    });
+    
+    // Load images with filter
+    loadImages(filter);
+}
+
+// Copy image link to clipboard
+function copyImageLink(url, isPublic) {
+    // For private images, add token to URL
+    const linkToCopy = isPublic ? url : `${url}?token=${authToken}`;
+    
+    navigator.clipboard.writeText(linkToCopy).then(() => {
+        // Show temporary success message on the button that was clicked
+        const btn = event.target;
+        const originalText = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.style.background = '#10b981';
+        btn.style.color = 'white';
+        setTimeout(() => {
+            btn.textContent = originalText;
+            btn.style.background = '';
+            btn.style.color = '';
+        }, 2000);
+    }).catch(() => {
+        // Fallback for older browsers
+        const textarea = document.createElement('textarea');
+        textarea.value = linkToCopy;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+            document.execCommand('copy');
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.textContent = 'Copied!';
+            setTimeout(() => {
+                btn.textContent = originalText;
+            }, 2000);
+        } catch (err) {
+            alert('Failed to copy link. Link: ' + linkToCopy);
+        }
+        document.body.removeChild(textarea);
+    });
 }
 
 // Delete image
@@ -382,6 +509,8 @@ function showDashboard() {
 function goToLogin() {
     showScreen('loginScreen');
     document.getElementById('loginForm').reset();
+    // Clear OTP inputs
+    document.querySelectorAll('.otp-input').forEach(inp => inp.value = '');
 }
 
 // Logout

@@ -9,117 +9,162 @@
 <body>
     <!-- Login Screen -->
     <div id="loginScreen" class="screen active">
-        <div class="container">
-            <div class="card">
-                <h1>🔐 CDN Server Login</h1>
-                <form id="loginForm">
+        <div class="login-container">
+            <div class="login-card">
+                <div class="login-header">
+                    <h1>Login to your account</h1>
+                    <p class="text-muted">Enter your credentials below to login to your account</p>
+                </div>
+                <form id="loginForm" class="login-form">
                     <div class="form-group">
                         <label for="username">Username</label>
-                        <input type="text" id="username" name="username" required placeholder="Enter username">
+                        <input type="text" id="username" name="username" required placeholder="Enter username" class="input">
                     </div>
                     <div class="form-group">
-                        <label for="password">Password</label>
-                        <input type="password" id="password" name="password" required placeholder="Enter password">
+                        <div class="label-row">
+                            <label for="password">Password</label>
+                        </div>
+                        <input type="password" id="password" name="password" required placeholder="Enter password" class="input">
                     </div>
-                    <button type="submit" class="btn btn-primary">Login</button>
+                    <button type="submit" class="btn btn-primary btn-block">Login</button>
                 </form>
-                <div id="loginError" class="error-message"></div>
+                <div id="loginError" class="alert alert-error"></div>
             </div>
         </div>
     </div>
 
     <!-- TOTP Verification Screen -->
     <div id="totpScreen" class="screen">
-        <div class="container">
-            <div class="card">
-                <h1>🔒 Two-Factor Authentication</h1>
-                <p>Enter the 6-digit code from your authenticator app</p>
-                <form id="totpForm">
+        <div class="login-container">
+            <div class="login-card">
+                <div class="login-header">
+                    <h1>Enter verification code</h1>
+                    <p class="text-muted">We sent a 6-digit code to your authenticator app.</p>
+                </div>
+                <form id="totpForm" class="login-form">
                     <input type="hidden" id="tempSessionId">
                     <div class="form-group">
-                        <label for="totpCode">TOTP Code</label>
-                        <input type="text" id="totpCode" name="totpCode" required 
-                               maxlength="6" pattern="[0-9]{6}" placeholder="000000">
+                        <label>Verification code</label>
+                        <div class="otp-group">
+                            <input type="text" class="otp-input" id="otp1" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="one-time-code">
+                            <input type="text" class="otp-input" id="otp2" maxlength="1" pattern="[0-9]" inputmode="numeric">
+                            <input type="text" class="otp-input" id="otp3" maxlength="1" pattern="[0-9]" inputmode="numeric">
+                            <input type="text" class="otp-input" id="otp4" maxlength="1" pattern="[0-9]" inputmode="numeric">
+                            <input type="text" class="otp-input" id="otp5" maxlength="1" pattern="[0-9]" inputmode="numeric">
+                            <input type="text" class="otp-input" id="otp6" maxlength="1" pattern="[0-9]" inputmode="numeric">
+                        </div>
+                        <p class="text-muted text-small" style="margin-top: 0.5rem;">Enter the 6-digit code sent to your authenticator app.</p>
                     </div>
-                    <button type="submit" class="btn btn-primary">Verify</button>
-                    <button type="button" class="btn btn-secondary" onclick="goToLogin()">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-block">Verify</button>
+                    <div class="resend-link" style="text-align: center; margin-top: 1rem;">
+                        <span class="text-muted">Didn't receive the code? </span>
+                        <a href="#" onclick="goToLogin(); return false;" style="color: var(--primary); text-decoration: none;">Cancel</a>
+                    </div>
                 </form>
-                <div id="totpError" class="error-message"></div>
+                <div id="totpError" class="alert alert-error"></div>
             </div>
         </div>
     </div>
 
     <!-- Main Dashboard -->
     <div id="dashboardScreen" class="screen">
-        <nav class="navbar">
-            <div class="nav-content">
-                <h2>📦 CDN Server</h2>
-                <div class="nav-actions">
-                    <span id="userInfo"></span>
-                    <button class="btn btn-secondary" onclick="showTotpSetup()">TOTP Settings</button>
-                    <button class="btn btn-danger" onclick="logout()">Logout</button>
+        <header class="header">
+            <div class="header-content">
+                <div class="header-left">
+                    <h1 class="header-title">CDN Server</h1>
+                </div>
+                <div class="header-right">
+                    <span id="userInfo" class="user-info"></span>
+                    <button class="btn btn-ghost" onclick="showTotpSetup()">Settings</button>
+                    <button class="btn btn-ghost" onclick="logout()">Logout</button>
                 </div>
             </div>
-        </nav>
+        </header>
 
-        <div class="container">
-            <!-- TOTP Setup Modal -->
-            <div id="totpSetupModal" class="modal">
-                <div class="modal-content">
-                    <span class="close" onclick="closeTotpSetup()">&times;</span>
-                    <h2>🔐 Setup Two-Factor Authentication</h2>
-                    <div id="totpSetupContent">
-                        <p>Click "Generate QR Code" to set up TOTP.</p>
-                        <button class="btn btn-primary" onclick="generateTotpQr()">Generate QR Code</button>
+        <main class="main">
+            <div class="container">
+                <!-- TOTP Setup Modal -->
+                <div id="totpSetupModal" class="modal">
+                    <div class="modal-content modal-lg">
+                        <div class="modal-header">
+                            <h2>Setup Two-Factor Authentication</h2>
+                            <button class="modal-close" onclick="closeTotpSetup()">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div id="totpSetupContent">
+                                <p class="text-muted">Click "Generate QR Code" to set up TOTP.</p>
+                                <button class="btn btn-primary" onclick="generateTotpQr()">Generate QR Code</button>
+                            </div>
+                            <div id="qrCodeDisplay" style="display: none;">
+                                <p class="text-muted">Scan this QR code with Google Authenticator or any TOTP app:</p>
+                                <img id="qrCodeImage" src="" alt="TOTP QR Code" class="qr-code">
+                                <p class="text-muted"><strong>Manual Entry Key:</strong></p>
+                                <code id="manualKey" class="code-block"></code>
+                                <div class="form-group" style="margin-top: 1.5rem;">
+                                    <label for="setupTotpCode">Enter verification code:</label>
+                                    <input type="text" id="setupTotpCode" maxlength="6" pattern="[0-9]{6}" placeholder="000000" class="input">
+                                    <div class="form-actions">
+                                        <button class="btn btn-primary" onclick="enableTotp()">Enable TOTP</button>
+                                        <button class="btn btn-secondary" onclick="closeTotpSetup()">Cancel</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="totpDisableSection" style="display: none;">
+                                <p>TOTP is currently enabled.</p>
+                                <button class="btn btn-danger" onclick="disableTotp()">Disable TOTP</button>
+                            </div>
+                        </div>
+                        <div id="totpSetupError" class="alert alert-error"></div>
                     </div>
-                    <div id="qrCodeDisplay" style="display: none;">
-                        <p>Scan this QR code with Google Authenticator or any TOTP app:</p>
-                        <img id="qrCodeImage" src="" alt="TOTP QR Code">
-                        <p><strong>Manual Entry Key:</strong> <code id="manualKey"></code></p>
-                        <div class="form-group">
-                            <label for="setupTotpCode">Enter verification code:</label>
-                            <input type="text" id="setupTotpCode" maxlength="6" pattern="[0-9]{6}" placeholder="000000">
-                            <button class="btn btn-primary" onclick="enableTotp()">Enable TOTP</button>
-                            <button class="btn btn-secondary" onclick="closeTotpSetup()">Cancel</button>
+                </div>
+
+                <!-- Upload Section -->
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Upload Image</h2>
+                    </div>
+                    <div class="card-body">
+                        <form id="uploadForm" enctype="multipart/form-data">
+                            <div class="form-group">
+                                <label for="imageFile">Select Image</label>
+                                <input type="file" id="imageFile" name="image" accept="image/*" required class="input-file">
+                                <small class="text-muted">Supported: JPEG, PNG, WebP, GIF (Max 50MB)</small>
+                            </div>
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="isPublic" name="isPublic" checked>
+                                    <span>Make image public (accessible without authentication)</span>
+                                </label>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary btn-sm">Upload Image</button>
+                            </div>
+                        </form>
+                        <div id="uploadError" class="alert alert-error"></div>
+                        <div id="uploadSuccess" class="alert alert-success"></div>
+                    </div>
+                </div>
+
+                <!-- Filter Section -->
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Images</h2>
+                        <div class="filter-tabs">
+                            <button class="filter-tab active" onclick="filterImages('all')" data-filter="all">All</button>
+                            <button class="filter-tab" onclick="filterImages('public')" data-filter="public">Public</button>
+                            <button class="filter-tab" onclick="filterImages('private')" data-filter="private">Private</button>
                         </div>
                     </div>
-                    <div id="totpDisableSection" style="display: none;">
-                        <p>TOTP is currently enabled.</p>
-                        <button class="btn btn-danger" onclick="disableTotp()">Disable TOTP</button>
+                    <div class="card-body">
+                        <div id="imagesList" class="images-grid">
+                            <div class="loading">Loading images...</div>
+                        </div>
                     </div>
-                    <div id="totpSetupError" class="error-message"></div>
                 </div>
             </div>
-
-            <!-- Upload Section -->
-            <div class="card">
-                <h2>📤 Upload Image</h2>
-                <form id="uploadForm" enctype="multipart/form-data">
-                    <div class="form-group">
-                        <label for="imageFile">Select Image</label>
-                        <input type="file" id="imageFile" name="image" accept="image/*" required>
-                        <small>Supported: JPEG, PNG, WebP, GIF (Max 50MB)</small>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Upload Image</button>
-                </form>
-                <div id="uploadError" class="error-message"></div>
-                <div id="uploadSuccess" class="success-message"></div>
-            </div>
-
-            <!-- Images Gallery -->
-            <div class="card">
-                <div class="card-header">
-                    <h2>🖼️ Uploaded Images</h2>
-                    <button class="btn btn-secondary" onclick="loadImages()">Refresh</button>
-                </div>
-                <div id="imagesList" class="images-grid">
-                    <p>Loading images...</p>
-                </div>
-            </div>
-        </div>
+        </main>
     </div>
 
     <script src="app.js"></script>
 </body>
 </html>
-
