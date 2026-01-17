@@ -1,0 +1,36 @@
+{
+  "name": "raspberry-pi-cdn",
+  "version": "1.0.0",
+  "description": "Lightweight image CDN server for Raspberry Pi 5",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": ["cdn", "image-server", "raspberry-pi", "self-hosted", "image-cdn", "totp", "jwt", "express"],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/raspberry-pi-cdn.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/raspberry-pi-cdn/issues"
+  },
+  "homepage": "https://github.com/yourusername/raspberry-pi-cdn#readme",
+  "dependencies": {
+    "express": "^4.18.2",
+    "multer": "^1.4.5-lts.1",
+    "sharp": "^0.32.6",
+    "uuid": "^9.0.1",
+    "cors": "^2.8.5",
+    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^2.4.3",
+    "speakeasy": "^2.0.0",
+    "qrcode": "^1.5.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
+
